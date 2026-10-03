@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barra de subs</title>
+<style>
+  /* ====== COLORES Y TAMAÑOS (se pueden cambiar) ====== */
+  :root {
+    --ancho: 900px;            /* ancho total de la fuente en OBS */
+    --alto-barra: 26px;        /* grosor de la barra */
+    --alto-corredor: 90px;     /* tamaño del GIF del corredor */
+    --fondo-barra: #1b1f2a;
+    --borde-barra: #3a4256;
+    --relleno-1: #ffd54a;
+    --relleno-2: #ff9f1c;
+    --texto: #ffffff;
+  }
+
+  html, body {
+    margin: 0;
+    background: transparent;
+    overflow: hidden;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  }
+
+  #escena {
+    position: relative;
+    width: var(--ancho);
+    height: 200px;
+  }
+
+  /* Pista: la barra por donde corre el personaje */
+  #pista {
+    position: absolute;
+    left: 60px;
+    right: 60px;
+    bottom: 48px;
+    height: var(--alto-barra);
+    background: var(--fondo-barra);
+    border: 3px solid var(--borde-barra);
+    border-radius: 999px;
+    box-sizing: content-box;
+  }
+
+  #relleno {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--relleno-1), var(--relleno-2));
+    transition: width 1.2s ease-in-out;
+    box-shadow: 0 0 12px rgba(255, 190, 40, .6);
+  }
+
+  /* Corredor (GIF) */
+  #corredor {
+    position: absolute;
+    left: 0%;
+    bottom: calc(100% - 2px);
+    height: var(--alto-corredor);
+    transform: translateX(-50%);
+    transition: left 1.2s ease-in-out;
+    pointer-events: none;
+  }
+  #corredor.voltear { transform: translateX(-50%) scaleX(-1); }
+
+  /* Anillo dorado */
+  #anillo {
+    position: absolute;
+    left: 0%;
+    bottom: calc(100% + 24px);
+    width: 40px;
+    height: 40px;
+    margin-left: -20px;
+    opacity: 0;
+    perspective: 200px;
+    pointer-events: none;
+  }
+  #anillo svg {
+    width: 100%;
+    height: 100%;
+    animation: girar .8s linear infinite;
+  }
+  #anillo.aparece { opacity: 1; animation: entra .25s ease-out; }
+  #anillo.atrapado { animation: atrapa .45s ease-in forwards; }
+
+  @keyframes girar { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+  @keyframes entra { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes atrapa {
+    0%   { transform: scale(1);   opacity: 1; }
+    100% { transform: translateY(-26px) scale(1.8); opacity: 0; }
+  }
+
+  .chispa {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #fff3a6;
+    box-shadow: 0 0 8px #ffd54a;
+    pointer-events: none;
+  }
+
+  /* Bandera de meta */
+  #meta-flag {
+    position: absolute;
+    right: 14px;
+    bottom: 52px;
+    color: var(--texto);
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 4px rgba(0,0,0,.8);
+  }
+
+  /* Contador */
+  #contador {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 6px;
+    text-align: center;
+    color: var(--texto);
+    font-size: 20px;
+    font-weight: 800;
+    text-shadow: 0 2px 6px rgba(0,0,0,.85);
+  }
+  #contador .mini-anillo {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 4px solid #ffc400;
+    border-radius: 50%;
+    vertical-align: -3px;
+    margin-right: 8px;
+    box-sizing: border-box;
+  }
+  #contador.bump { animation: bump .35s ease-out; }
+  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+  /* Cuando llega a la meta */
+  #escena.meta-lograda #relleno { animation: brillo 1s ease-in-out infinite alternate; }
+  @keyframes brillo { from { filter: brightness(1); } to { filter: brightness(1.5); } }
+
+  #aviso {
+    position: absolute;
+    top: 4px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #ff8a8a;
+    font-size: 14px;
+    font-weight: 700;
+    text-shadow: 0 1px 3px #000;
+  }
+</style>
+</head>
+<body>
+
+<div id="escena">
+  <div id="aviso"></div>
+
+  <div id="pista">
+    <div id="relleno"></div>
+    <img id="corredor" alt="">
+    <div id="anillo">
+      <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="oro" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#fff2a8"/>
+            <stop offset="0.5" stop-color="#ffc400"/>
+            <stop offset="1" stop-color="#b87800"/>
+          </linearGradient>
+        </defs>
+        <circle cx="20" cy="20" r="14" fill="none" stroke="url(#oro)" stroke-width="6"/>
+      </svg>
+    </div>
+  </div>
+
+  <div id="meta-flag">META</div>
+  <div id="contador"><span class="mini-anillo"></span><span id="texto-contador">Subs: 0 / 50</span></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
+<script>
+/* =====================================================
+   CONFIGURACIÓN
+   Se puede cambiar acá o por la URL, por ejemplo:
+   barra.html?canal=nombredelcanal&meta=50&gif=corredor.gif
+
+   Parámetros de la URL:
+     canal   = canal de Twitch del que se leen las subs (obligatorio)
+     meta    = cantidad de subs para llenar la barra (por defecto 50)
+     gif     = nombre del archivo del corredor (por defecto corredor.gif)
+     voltear = 1 si el GIF mira para el lado contrario
+     inicio  = subs con las que arranca (por defecto 0)
+     test    = 1 para probar con teclado (S suma una sub, R reinicia)
+     demo    = 1 suma una sub cada 2,5 segundos (solo para ver cómo se ve)
+   ===================================================== */
+const q = new URLSearchParams(location.search);
+const CONFIG = {
+  canal:   (q.get('canal') || '').trim().toLowerCase().replace('#', ''),
+  meta:    Math.max(1, parseInt(q.get('meta'), 10) || 50),
+  gif:     q.get('gif') || 'corredor.gif',
+  voltear: q.get('voltear') === '1',
+  inicio:  Math.max(0, parseInt(q.get('inicio'), 10) || 0),
+  test:    q.get('test') === '1',
+  demo:    q.get('demo') === '1'
+};
+
+const escena   = document.getElementById('escena');
+const relleno  = document.getElementById('relleno');
+const corredor = document.getElementById('corredor');
+const anillo   = document.getElementById('anillo');
+const contador = document.getElementById('contador');
+const textoCt  = document.getElementById('texto-contador');
+const aviso    = document.getElementById('aviso');
+
+/* ---------- Corredor ---------- */
+corredor.src = CONFIG.gif;
+if (CONFIG.voltear) corredor.classList.add('voltear');
+corredor.onerror = function () {
+  // Si no encuentra el GIF, muestra un circulo para que se note
+  corredor.onerror = null;
+  corredor.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><circle cx="40" cy="40" r="30" fill="#3aa0ff"/></svg>'
+  );
+  aviso.textContent = 'No se encontró ' + CONFIG.gif + ' (tiene que estar en la misma carpeta)';
+};
+
+/* ---------- Estado guardado (se mantiene al reabrir OBS) ---------- */
+const CLAVE = 'barra-subs-' + (CONFIG.canal || 'sin-canal') + '-' + CONFIG.meta;
+function leerGuardado() {
+  try {
+    const v = localStorage.getItem(CLAVE);
+    return v === null ? null : parseInt(v, 10);
+  } catch (e) { return null; }
+}
+function guardar(n) {
+  try { localStorage.setItem(CLAVE, String(n)); } catch (e) {}
+}
+
+let mostrado = (leerGuardado() !== null && !isNaN(leerGuardado())) ? leerGuardado() : CONFIG.inicio;
+let animando = false;
+const cola = [];
+
+function porcentaje(n) { return Math.min(n / CONFIG.meta, 1) * 100; }
+
+function pintar(n, conTransicion) {
+  const p = porcentaje(n);
+  relleno.style.transition  = conTransicion ? '' : 'none';
+  corredor.style.transition = conTransicion ? '' : 'none';
+  relleno.style.width  = p + '%';
+  corredor.style.left  = p + '%';
+  textoCt.textContent  = 'Subs: ' + n + ' / ' + CONFIG.meta;
+  escena.classList.toggle('meta-lograda', n >= CONFIG.meta);
+}
+
+/* ---------- Chispas al atrapar el anillo ---------- */
+function chispas() {
+  const pista = document.getElementById('pista');
+  const rect  = anillo.getBoundingClientRect();
+  const base  = pista.getBoundingClientRect();
+  const cx = rect.left - base.left + rect.width / 2;
+  const cy = rect.top  - base.top  + rect.height / 2;
+  for (let i = 0; i < 8; i++) {
+    const c = document.createElement('div');
+    c.className = 'chispa';
+    c.style.left = (cx - 3) + 'px';
+    c.style.top  = (cy - 3) + 'px';
+    pista.appendChild(c);
+    const ang = (Math.PI * 2 * i) / 8;
+    const dx = Math.cos(ang) * 34, dy = Math.sin(ang) * 34;
+    const a = c.animate(
+      [{ transform: 'translate(0,0) scale(1)', opacity: 1 },
+       { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(.2)', opacity: 0 }],
+      { duration: 500, easing: 'ease-out' }
+    );
+    a.onfinish = function () { c.remove(); };
+  }
+}
+
+/* ---------- Animación de una sub ---------- */
+function procesar() {
+  if (animando || cola.length === 0) return;
+  cola.shift();
+  animando = true;
+
+  const nuevo = mostrado + 1;
+  const pNuevo = porcentaje(nuevo);
+
+  // el anillo aparece adelante del corredor, en la posición a la que va a llegar
+  anillo.style.left = pNuevo + '%';
+  anillo.className = '';
+  void anillo.offsetWidth;
+  anillo.classList.add('aparece');
+
+  // el corredor y la barra avanzan hacia el anillo
+  relleno.style.transition  = '';
+  corredor.style.transition = '';
+  relleno.style.width = pNuevo + '%';
+  corredor.style.left = pNuevo + '%';
+
+  setTimeout(function () {
+    // el corredor llegó: atrapa el anillo
+    anillo.classList.remove('aparece');
+    anillo.classList.add('atrapado');
+    chispas();
+    mostrado = nuevo;
+    guardar(mostrado);
+    textoCt.textContent = 'Subs: ' + mostrado + ' / ' + CONFIG.meta;
+    escena.classList.toggle('meta-lograda', mostrado >= CONFIG.meta);
+    contador.classList.remove('bump');
+    void contador.offsetWidth;
+    contador.classList.add('bump');
+
+    setTimeout(function () {
+      anillo.className = '';
+      anillo.style.opacity = 0;
+      animando = false;
+      procesar();
+    }, 500);
+  }, 1250);
+}
+
+function agregarSub() {
+  cola.push(1);
+  procesar();
+}
+
+function fijarSubs(n) {
+  cola.length = 0;
+  animando = false;
+  anillo.className = '';
+  mostrado = Math.max(0, n);
+  guardar(mostrado);
+  pintar(mostrado, false);
+}
+
+pintar(mostrado, false);
+
+/* ---------- Lectura de subs desde el chat de Twitch ---------- */
+if (!CONFIG.canal && !CONFIG.test && !CONFIG.demo) {
+  aviso.textContent = 'Falta el canal: agregá ?canal=nombredelcanal al final del link';
+}
+
+if (CONFIG.canal && typeof tmi !== 'undefined') {
+  const client = new tmi.Client({ channels: [CONFIG.canal] });
+
+  client.on('subscription', function () { agregarSub(); });
+  client.on('resub',        function () { agregarSub(); });
+  client.on('subgift',      function () { agregarSub(); }); // una por cada sub regalada
+
+  // Comandos para el streamer y los mods:
+  //   !setsubs 12   -> deja el contador en 12
+  //   !addsub       -> suma una sub a mano
+  //   !resetsubs    -> vuelve a 0
+  client.on('message', function (canal, tags, mensaje, self) {
+    if (self) return;
+    const esMod = tags.mod || (tags.badges && tags.badges.broadcaster === '1');
+    if (!esMod) return;
+    const partes = mensaje.trim().split(/\s+/);
+    const cmd = partes[0].toLowerCase();
+    if (cmd === '!setsubs' && !isNaN(parseInt(partes[1], 10))) fijarSubs(parseInt(partes[1], 10));
+    else if (cmd === '!addsub') agregarSub();
+    else if (cmd === '!resetsubs') fijarSubs(0);
+  });
+
+  client.connect().catch(function () {
+    aviso.textContent = 'No se pudo conectar al chat de Twitch';
+  });
+}
+
+/* ---------- Pruebas ---------- */
+if (CONFIG.test || CONFIG.demo) {
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 's' || e.key === 'S') agregarSub();
+    if (e.key === 'r' || e.key === 'R') fijarSubs(0);
+  });
+}
+if (CONFIG.demo) {
+  setInterval(function () {
+    if (mostrado >= CONFIG.meta) fijarSubs(0);
+    else agregarSub();
+  }, 2500);
+}
+</script>
+</body>
+</html>
